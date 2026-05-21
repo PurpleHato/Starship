@@ -29,3 +29,10 @@ DEFINE_EVENT(DrawBossHealthHUDEvent);
 
 DEFINE_EVENT(DrawGlobalHUDPreEvent);
 DEFINE_EVENT(DrawGlobalHUDPostEvent);
+
+// Voice playback interception events
+DEFINE_EVENT(PlayVoiceEvent, s32 msgId;);
+DEFINE_EVENT(UpdateVoiceEvent, bool* finished;);
+DEFINE_EVENT(GetCurrentVoiceEvent, s32* result;);
+DEFINE_EVENT(GetVoiceStatusEvent, s32* result;);
+DEFINE_EVENT(ClearVoiceEvent);

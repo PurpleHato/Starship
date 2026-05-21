@@ -4,6 +4,7 @@
 #include "audiothread_cmd.h"
 #include "audioseq_cmd.h"
 #include "port/Engine.h"
+#include "port/hooks/Events.h"
 
 void Audio_SetModulationAndPlaySfx(f32* sfxSource, u32 sfxId, f32 freqMod);
 s32 Audio_GetCurrentVoice(void);
@@ -1850,6 +1851,7 @@ void Audio_ResetSfx(void) {
 void Audio_PlayVoice(s32 msgId) {
     sCurrentVoiceId = sNextVoiceId = msgId;
     sSetNextVoiceId = true;
+    CALL_EVENT(PlayVoiceEvent, msgId);
 }
 
 void Audio_PlayVoiceWithoutBGM(u32 msgId) {
@@ -1875,13 +1877,23 @@ void Audio_UpdateVoice(void) {
         AUDIOCMD_CHANNEL_SET_IO(SEQ_PLAYER_VOICE, 15, 5, voiceIdHi);
         AUDIOCMD_CHANNEL_SET_IO(SEQ_PLAYER_VOICE, 15, 6, voiceIdLo);
         sSetNextVoiceId = false;
-    } else if ((sMuteBgmForVoice) && (Audio_GetCurrentVoice() == 0)) {
+    }
+
+    bool finished = false;
+    CALL_EVENT(UpdateVoiceEvent, &finished);
+    if (finished && sMuteBgmForVoice) {
+        Audio_SetSequenceFade(SEQ_PLAYER_BGM, 2, 127, 15);
+        sMuteBgmForVoice = false;
+    }
+
+    if (!sSetNextVoiceId && !finished && (sMuteBgmForVoice) && (Audio_GetCurrentVoice() == 0)) {
         Audio_SetSequenceFade(SEQ_PLAYER_BGM, 2, 127, 15);
         sMuteBgmForVoice = false;
     }
 }
 
 void Audio_ClearVoice(void) {
+    CALL_EVENT(ClearVoiceEvent);
     sCurrentVoiceId = 0;
     sNextVoiceId = 1;
     sSetNextVoiceId = true;
@@ -1890,6 +1902,12 @@ void Audio_ClearVoice(void) {
 s32 Audio_GetCurrentVoice(void) {
     // LAudioTODO: Stub for now
     // return 0;
+
+    s32 voiceResult = -1;
+    CALL_EVENT(GetCurrentVoiceEvent, &voiceResult);
+    if (voiceResult != -1) {
+        return voiceResult;
+    }
 
     if (!IS_SEQUENCE_CHANNEL_VALID(gSeqPlayers[SEQ_PLAYER_VOICE].channels[15])) {
         return 0;
@@ -1907,6 +1925,12 @@ s32 Audio_GetCurrentVoice(void) {
 s32 Audio_GetCurrentVoiceStatus(void) {
     // LAudioTODO: Stub for now
     // return 1;
+
+    s32 statusResult = -1;
+    CALL_EVENT(GetVoiceStatusEvent, &statusResult);
+    if (statusResult != -1) {
+        return statusResult;
+    }
 
     SequenceChannel* channel = gSeqPlayers[SEQ_PLAYER_VOICE].channels[15];
     SequenceLayer* layer = channel->layers[0];

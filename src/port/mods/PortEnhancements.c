@@ -428,6 +428,10 @@ void PortEnhancements_Init() {
     REGISTER_LISTENER(PlayerActionPostShootEvent, OnPlayerShootPost, EVENT_PRIORITY_NORMAL);
     REGISTER_LISTENER(PlayerActionPreShootChargedEvent, OnPlayerShootChargedPre, EVENT_PRIORITY_NORMAL);
 
+    // Register voice override listeners
+    VoiceOverride_Init();
+    VoiceHooks_Register();
+
     // If we close the game while debug pause is active, we want it to be deactivated when we run again.
     CVarSetInteger("gDebugPause", 0);
 }
@@ -459,6 +463,13 @@ void PortEnhancements_Register() {
     REGISTER_EVENT(DrawBossHealthHUDEvent);
     REGISTER_EVENT(DrawGlobalHUDPreEvent);
     REGISTER_EVENT(DrawGlobalHUDPostEvent);
+
+    // Register voice events
+    REGISTER_EVENT(PlayVoiceEvent);
+    REGISTER_EVENT(UpdateVoiceEvent);
+    REGISTER_EVENT(GetCurrentVoiceEvent);
+    REGISTER_EVENT(GetVoiceStatusEvent);
+    REGISTER_EVENT(ClearVoiceEvent);
 
     // Register item events
     REGISTER_EVENT(ItemDropEvent);

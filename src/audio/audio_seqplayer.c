@@ -1,6 +1,7 @@
 #include "sys.h"
 #include "sf64audio_provisional.h"
 #include "endianness.h"
+#include "audioseq_cmd.h"
 #include "port/Engine.h"
 
 #define PORTAMENTO_IS_SPECIAL(x) ((x).mode & 0x80)
@@ -639,7 +640,13 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
                         }
 
                         if (instrument != NULL) {
-                            sample = Audio_GetInstrumentTunedSample(instrument, temp2);
+                            extern TunedSample* gVoiceOverrideTunedSample;
+                            if (gVoiceOverrideTunedSample != NULL && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
+                                sample = gVoiceOverrideTunedSample;
+                                layer->channel->stopScript = true;
+                            } else {
+                                sample = Audio_GetInstrumentTunedSample(instrument, temp2);
+                            }
                             sp40 = (sample == layer->tunedSample);
                             layer->tunedSample = sample;
                             tuning = sample->tuning;
@@ -683,14 +690,32 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
                         portamento->cur = 0.0f;
 
                         layer->freqMod = freqMod;
+                        {
+                            extern TunedSample* gVoiceOverrideTunedSample;
+                            extern float gVoiceOverrideFreqMod;
+                            if (gVoiceOverrideTunedSample != NULL && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
+                                layer->freqMod = gVoiceOverrideFreqMod;
+                            }
+                        }
                         if ((layer->portamento.mode & ~0x80) == 5) {
                             layer->portamentoTargetNote = cmd;
                         }
                     } else if (instrument != NULL) {
-                        sample = Audio_GetInstrumentTunedSample(instrument, cmd);
+                        extern TunedSample* gVoiceOverrideTunedSample;
+                        extern float gVoiceOverrideFreqMod;
+                        if (gVoiceOverrideTunedSample != NULL && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
+                            sample = gVoiceOverrideTunedSample;
+                            layer->channel->stopScript = true;
+                        } else {
+                            sample = Audio_GetInstrumentTunedSample(instrument, cmd);
+                        }
                         sp40 = (sample == layer->tunedSample);
                         layer->tunedSample = sample;
-                        layer->freqMod = gPitchFrequencies[cmd] * sample->tuning;
+                        if (gVoiceOverrideTunedSample != NULL && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
+                            layer->freqMod = gVoiceOverrideFreqMod;
+                        } else {
+                            layer->freqMod = gPitchFrequencies[cmd] * sample->tuning;
+                        }
                     } else {
                         layer->tunedSample = NULL;
                         layer->freqMod = gPitchFrequencies[cmd];
@@ -728,6 +753,14 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
         }
         if ((layer->note != NULL) && (layer == layer->note->playbackState.parentLayer)) {
             Audio_NoteVibratoInit(layer->note);
+        }
+    }
+    if (layer->note != NULL) {
+        extern TunedSample* gVoiceOverrideTunedSample;
+        if (gVoiceOverrideTunedSample != NULL &&
+            layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
+            layer->delay = 0x7FFF;
+            layer->gateDelay = 0;
         }
     }
     if (!channel) {}

@@ -1,6 +1,7 @@
 #include "sys.h"
 #include "sf64audio_provisional.h"
 #include "port/resource/loaders/AudioLoader.h"
+#include "port/hooks/Events.h"
 
 static const char devstr00[] = "Audio: setvol: volume minus %f\n";
 static const char devstr01[] = "Audio: setvol: volume overflow %f\n";

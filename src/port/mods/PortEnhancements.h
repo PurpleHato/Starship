@@ -7,6 +7,10 @@ extern "C" {
 void PortEnhancements_Register();
 void PortEnhancements_Init();
 void PortEnhancements_Exit();
+
+void VoiceHooks_Register(void);
+void VoiceOverride_Init(void);
+
 #define SETUPDL_OPTIONAL(digits) \
     (CVarGetInteger("gHUDPointFiltering", 1) == 1 ? SETUPDL_##digits##_POINT : SETUPDL_##digits)
 
