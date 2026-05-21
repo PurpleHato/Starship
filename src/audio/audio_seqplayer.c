@@ -593,6 +593,14 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
         layer->delay = cmdArg16;
         layer->gateDelay = (layer->gateTime * cmdArg16) >> 8;
 
+        {
+            extern bool gVoiceOverrideSilencing;
+            if (gVoiceOverrideSilencing && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
+                layer->muted = 1;
+                layer->delay2 = layer->delay;
+            }
+        }
+
         if ((seqPlayer->muted && (channel->muteBehavior & 0x50)) || (channel->muted)) {
             layer->muted = 1;
         } else {
@@ -644,6 +652,8 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
                             if (gVoiceOverrideTunedSample != NULL && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
                                 sample = gVoiceOverrideTunedSample;
                                 layer->channel->stopScript = true;
+                                layer->portamento.mode = PORTAMENTO_MODE_OFF;
+                                layer->portamento.extent = 0.0f;
                             } else {
                                 sample = Audio_GetInstrumentTunedSample(instrument, temp2);
                             }
@@ -706,6 +716,8 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
                         if (gVoiceOverrideTunedSample != NULL && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
                             sample = gVoiceOverrideTunedSample;
                             layer->channel->stopScript = true;
+                            layer->portamento.mode = PORTAMENTO_MODE_OFF;
+                            layer->portamento.extent = 0.0f;
                         } else {
                             sample = Audio_GetInstrumentTunedSample(instrument, cmd);
                         }
@@ -761,6 +773,8 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
             layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]) {
             layer->delay = 0x7FFF;
             layer->gateDelay = 0;
+            layer->note->playbackState.portamento.mode = 0;
+            layer->note->playbackState.portamento.extent = 0.0f;
         }
     }
     if (!channel) {}
