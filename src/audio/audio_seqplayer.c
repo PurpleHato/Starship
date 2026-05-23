@@ -327,6 +327,7 @@ u16 AudioSeq_ScriptReadCompressedU16(SeqScriptState* state) {
     return ret;
 }
 
+// [port - voice hook - function pointers set by port layer, NULL when mod not loaded]
 extern void (*gVoiceOverridePreNoteFn)(SequenceLayer* layer, SequenceChannel* channel);
 extern void (*gVoiceOverridePostNoteFn)(SequenceLayer* layer);
 
@@ -705,6 +706,7 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
         }
     }
 
+    // [port - voice hook - overrides sample/freqMod for custom voice playback]
     if (gVoiceOverridePreNoteFn) gVoiceOverridePreNoteFn(layer, channel);
 
     if ((layer->muted == false) && (layer->tunedSample != NULL) && (layer->tunedSample->sample->codec == 2) &&
@@ -736,6 +738,7 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
             Audio_NoteVibratoInit(layer->note);
         }
     }
+    // [port - voice hook - freezes note duration for custom voice samples]
     if (layer->note != NULL) {
         if (gVoiceOverridePostNoteFn) gVoiceOverridePostNoteFn(layer);
     }
