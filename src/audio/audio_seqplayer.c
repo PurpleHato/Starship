@@ -707,7 +707,8 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
     }
 
     // [port - voice hook - overrides sample/freqMod for custom voice playback]
-    if (gVoiceOverridePreNoteFn) gVoiceOverridePreNoteFn(layer, channel);
+    if (gVoiceOverridePreNoteFn)
+        gVoiceOverridePreNoteFn(layer, channel);
 
     if ((layer->muted == false) && (layer->tunedSample != NULL) && (layer->tunedSample->sample->codec == 2) &&
         (layer->tunedSample->sample->medium != 0)) {
@@ -740,7 +741,8 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
     }
     // [port - voice hook - freezes note duration for custom voice samples]
     if (layer->note != NULL) {
-        if (gVoiceOverridePostNoteFn) gVoiceOverridePostNoteFn(layer);
+        if (gVoiceOverridePostNoteFn)
+            gVoiceOverridePostNoteFn(layer);
     }
     if (!channel) {}
 }

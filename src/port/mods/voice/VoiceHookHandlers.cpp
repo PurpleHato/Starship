@@ -6,10 +6,22 @@
 #include <chrono>
 
 // Voice event struct definitions (mirrors EngineEvent.h, without global.h dependency)
-struct PlayVoiceEvent { IEvent event; s32 msgId; };
-struct UpdateVoiceEvent { IEvent event; bool* finished; };
-struct GetCurrentVoiceEvent { IEvent event; s32* result; };
-struct GetVoiceStatusEvent { IEvent event; s32* result; };
+struct PlayVoiceEvent {
+    IEvent event;
+    s32 msgId;
+};
+struct UpdateVoiceEvent {
+    IEvent event;
+    bool* finished;
+};
+struct GetCurrentVoiceEvent {
+    IEvent event;
+    s32* result;
+};
+struct GetVoiceStatusEvent {
+    IEvent event;
+    s32* result;
+};
 
 extern "C" {
 extern uint32_t PlayVoiceEventID;
@@ -63,7 +75,8 @@ static TunedSample sSilentTunedSample;
 static bool sSilentSampleInitialized = false;
 
 static void InitSilentSample() {
-    if (sSilentSampleInitialized) return;
+    if (sSilentSampleInitialized)
+        return;
     sSilentLoop.start = 0;
     sSilentLoop.end = 1;
     sSilentLoop.count = 0;
@@ -72,7 +85,7 @@ static void InitSilentSample() {
     sSilentSample.unk_bit26 = 0;
     sSilentSample.isRelocated = true;
     sSilentSample.size = 2;
-    sSilentSample.sampleAddr = (u8*)&sSilentSampleData;
+    sSilentSample.sampleAddr = (u8*) &sSilentSampleData;
     sSilentSample.loop = &sSilentLoop;
     sSilentSample.book = nullptr;
     sSilentTunedSample.sample = &sSilentSample;
@@ -117,18 +130,18 @@ static void SetupDirectVoiceInstrument(VoiceOverrideData* voiceData) {
     sDirectVoiceInstrument.normalPitchTunedSample = sDirectVoiceTunedSample;
     sDirectVoiceInstrument.highPitchTunedSample = sDirectVoiceTunedSample;
 
-    SPDLOG_INFO("[VoiceHook] Setup: loop [{}, {}), size={}, codec=S16",
-        sDirectVoiceLoop.start, sDirectVoiceLoop.end, voiceData->size);
+    SPDLOG_INFO("[VoiceHook] Setup: loop [{}, {}), size={}, codec=S16", sDirectVoiceLoop.start, sDirectVoiceLoop.end,
+                voiceData->size);
     SPDLOG_INFO("[VoiceHook] Expected duration: {:.3f}s ({} samples / {} rate / {}ch)",
-        (float)voiceData->numSamples / (float)voiceData->sampleRate,
-        voiceData->numSamples, voiceData->sampleRate, voiceData->channels);
-    SPDLOG_INFO("[VoiceHook] freqMod={:.4f} ({}Hz * {}ch / 32000)",
-        gVoiceOverrideFreqMod, voiceData->sampleRate, voiceData->channels);
+                (float) voiceData->numSamples / (float) voiceData->sampleRate, voiceData->numSamples,
+                voiceData->sampleRate, voiceData->channels);
+    SPDLOG_INFO("[VoiceHook] freqMod={:.4f} ({}Hz * {}ch / 32000)", gVoiceOverrideFreqMod, voiceData->sampleRate,
+                voiceData->channels);
 }
 
 static void VoiceOverride_Finish() {
-    SPDLOG_INFO("[VoiceHook] VoiceOverride_Finish called (was active={}, msgId={})",
-        sDirectVoiceActive, sDirectVoiceMsgId);
+    SPDLOG_INFO("[VoiceHook] VoiceOverride_Finish called (was active={}, msgId={})", sDirectVoiceActive,
+                sDirectVoiceMsgId);
     InitSilentSample();
     if (sDirectVoiceActive) {
         gVoiceOverrideSilencing = 1;
@@ -150,11 +163,11 @@ static void VoiceOverride_Finish() {
 static void OnPlayVoice(IEvent* ev) {
     auto* event = reinterpret_cast<PlayVoiceEvent*>(ev);
 
-    SPDLOG_INFO("[VoiceHook] PlayVoice msgId={}, hasOverride={}, active={}, pending={}, activeMsg={}",
-        event->msgId, VoiceOverride_HasOverride((u32)event->msgId),
-        sDirectVoiceActive, (s32)sPendingVoiceMsgId, sDirectVoiceMsgId);
+    SPDLOG_INFO("[VoiceHook] PlayVoice msgId={}, hasOverride={}, active={}, pending={}, activeMsg={}", event->msgId,
+                VoiceOverride_HasOverride((u32) event->msgId), sDirectVoiceActive, (s32) sPendingVoiceMsgId,
+                sDirectVoiceMsgId);
 
-    if (!VoiceOverride_HasOverride((u32)event->msgId)) {
+    if (!VoiceOverride_HasOverride((u32) event->msgId)) {
         // No override — signal audio thread to clear if needed
         if (sDirectVoiceActive || sPendingVoiceMsgId >= 0 || gVoiceOverrideSilencing) {
             sPendingVoiceMsgId = -2;
@@ -163,7 +176,7 @@ static void OnPlayVoice(IEvent* ev) {
     }
 
     // Don't re-request if already active for the same message
-    if (sDirectVoiceActive && sDirectVoiceMsgId == (u32)event->msgId) {
+    if (sDirectVoiceActive && sDirectVoiceMsgId == (u32) event->msgId) {
         SPDLOG_INFO("[VoiceHook] PlayVoice msgId={} — already active, skipping", event->msgId);
         return;
     }
@@ -186,10 +199,9 @@ static void OnUpdateVoice(IEvent* ev) {
         {
             SequenceChannel* ch = Voice_GetChannel15();
             if (ch != nullptr) {
-                SPDLOG_INFO("[VoiceHook] Before unfreeze: stopScript={}, delay={}, layerNote={}",
-                    (int)ch->stopScript,
-                    (ch->layers[0] != nullptr ? (int)ch->layers[0]->delay : -1),
-                    (ch->layers[0] != nullptr && ch->layers[0]->note != nullptr ? 1 : 0));
+                SPDLOG_INFO("[VoiceHook] Before unfreeze: stopScript={}, delay={}, layerNote={}", (int) ch->stopScript,
+                            (ch->layers[0] != nullptr ? (int) ch->layers[0]->delay : -1),
+                            (ch->layers[0] != nullptr && ch->layers[0]->note != nullptr ? 1 : 0));
                 ch->stopScript = false;
                 if (ch->layers[0] != nullptr) {
                     ch->layers[0]->delay = 1;
@@ -203,16 +215,16 @@ static void OnUpdateVoice(IEvent* ev) {
         }
 
         // Load and activate override
-        VoiceOverrideData* voiceData = VoiceOverride_GetData((u32)pending);
+        VoiceOverrideData* voiceData = VoiceOverride_GetData((u32) pending);
         if (voiceData != nullptr && voiceData->sampleData != nullptr) {
-            sDirectVoiceMsgId = (u32)pending;
+            sDirectVoiceMsgId = (u32) pending;
             sDirectVoiceNumSamples = voiceData->numSamples;
             sDirectVoiceSampleRate = voiceData->sampleRate;
             sDirectVoiceChannels = voiceData->channels;
             sDirectVoiceData = voiceData;
             SetupDirectVoiceInstrument(voiceData);
 
-            gVoiceOverrideFreqMod = (float)(voiceData->sampleRate * voiceData->channels) / 32000.0f;
+            gVoiceOverrideFreqMod = (float) (voiceData->sampleRate * voiceData->channels) / 32000.0f;
             gVoiceOverrideTunedSample = &sDirectVoiceTunedSample;
             gVoiceOverrideArmed = 1;
             gVoiceOverrideCommSample = nullptr;
@@ -224,11 +236,9 @@ static void OnUpdateVoice(IEvent* ev) {
 
             SequenceChannel* ch = Voice_GetChannel15();
             SequenceLayer* layer = (ch != nullptr && ch->layers[0] != nullptr) ? ch->layers[0] : nullptr;
-            SPDLOG_INFO("[VoiceHook] Activated msgId={}, ch={}, stopScript={}, delay={}, layer={}, note={}",
-                pending, (void*)ch, (ch ? (int)ch->stopScript : -1),
-                (layer ? (int)layer->delay : -1),
-                (void*)layer,
-                (layer && layer->note ? (void*)layer->note : nullptr));
+            SPDLOG_INFO("[VoiceHook] Activated msgId={}, ch={}, stopScript={}, delay={}, layer={}, note={}", pending,
+                        (void*) ch, (ch ? (int) ch->stopScript : -1), (layer ? (int) layer->delay : -1), (void*) layer,
+                        (layer && layer->note ? (void*) layer->note : nullptr));
         }
     } else if (pending == -2) {
         sPendingVoiceMsgId = -1;
@@ -264,12 +274,13 @@ static void OnUpdateVoice(IEvent* ev) {
     // Safety net: if gVoiceOverrideStarted never set within 2x expected duration, force finish
     auto elapsed = std::chrono::steady_clock::now() - sVoiceStartTime;
     float elapsedSec = std::chrono::duration<float>(elapsed).count();
-    float expectedDuration = sDirectVoiceSampleRate > 0 ? (float)sDirectVoiceNumSamples / (float)sDirectVoiceSampleRate : 0.0f;
+    float expectedDuration =
+        sDirectVoiceSampleRate > 0 ? (float) sDirectVoiceNumSamples / (float) sDirectVoiceSampleRate : 0.0f;
 
     if (gVoiceOverrideStarted == 0) {
         if (expectedDuration > 0 && elapsedSec > expectedDuration * 2.0f) {
             SPDLOG_INFO("[VoiceHook] Safety net: override never started for msgId={} ({:.3f}s > {:.3f}s)",
-                sDirectVoiceMsgId, elapsedSec, expectedDuration * 2.0f);
+                        sDirectVoiceMsgId, elapsedSec, expectedDuration * 2.0f);
             ch->seqScriptIO[1] = 0;
             ch->stopScript = false;
             SequenceLayer* layer = ch->layers[0];
@@ -291,26 +302,24 @@ static void OnUpdateVoice(IEvent* ev) {
         if (!sLoggedNoteCreated) {
             sVoiceStartTime = std::chrono::steady_clock::now();
             SPDLOG_INFO("[VoiceHook] Note detected for msgId={}, noteFinished={}, delay={}, elapsed={:.3f}s",
-                sDirectVoiceMsgId, (int)noteFinished, (int)layer->delay, elapsedSec);
+                        sDirectVoiceMsgId, (int) noteFinished, (int) layer->delay, elapsedSec);
             sLoggedNoteCreated = true;
         }
     } else if (elapsedSec > 0.5f && !sLoggedNoteCreated) {
         sLoggedNoteCreated = true;
-        SPDLOG_INFO("[VoiceHook] WARNING: No note for msgId={} after {:.3f}s, layer={}, delay={}",
-            sDirectVoiceMsgId, elapsedSec,
-            (layer ? "exists" : "NULL"),
-            (layer ? (int)layer->delay : -1));
+        SPDLOG_INFO("[VoiceHook] WARNING: No note for msgId={} after {:.3f}s, layer={}, delay={}", sDirectVoiceMsgId,
+                    elapsedSec, (layer ? "exists" : "NULL"), (layer ? (int) layer->delay : -1));
     }
 
     if (!noteFinished && expectedDuration > 0 && elapsedSec > expectedDuration * 1.5f) {
-        SPDLOG_INFO("[VoiceHook] Timer backup finish for msgId={} ({:.3f}s > {:.3f}s)",
-            sDirectVoiceMsgId, elapsedSec, expectedDuration);
+        SPDLOG_INFO("[VoiceHook] Timer backup finish for msgId={} ({:.3f}s > {:.3f}s)", sDirectVoiceMsgId, elapsedSec,
+                    expectedDuration);
         noteFinished = true;
     }
 
     if (noteFinished) {
-        SPDLOG_INFO("[VoiceHook] Finish msgId={}, stopScript={}, delay={}",
-            sDirectVoiceMsgId, (int)ch->stopScript, (layer ? (int)layer->delay : -1));
+        SPDLOG_INFO("[VoiceHook] Finish msgId={}, stopScript={}, delay={}", sDirectVoiceMsgId, (int) ch->stopScript,
+                    (layer ? (int) layer->delay : -1));
         ch->seqScriptIO[1] = 0;
         ch->stopScript = false;
         if (layer != nullptr) {
@@ -324,7 +333,7 @@ static void OnUpdateVoice(IEvent* ev) {
 static void OnGetCurrentVoice(IEvent* ev) {
     auto* event = reinterpret_cast<GetCurrentVoiceEvent*>(ev);
     if (sDirectVoiceActive) {
-        *event->result = (s32)sDirectVoiceMsgId;
+        *event->result = (s32) sDirectVoiceMsgId;
     }
 }
 
@@ -337,11 +346,11 @@ static void OnGetVoiceStatus(IEvent* ev) {
     // Compute elapsed playback position
     auto elapsed = std::chrono::steady_clock::now() - sVoiceStartTime;
     float elapsedSec = std::chrono::duration<float>(elapsed).count();
-    u32 sampleIndex = (u32)(elapsedSec * (float)sDirectVoiceSampleRate) * sDirectVoiceChannels;
+    u32 sampleIndex = (u32) (elapsedSec * (float) sDirectVoiceSampleRate) * sDirectVoiceChannels;
 
     // Compute RMS amplitude in a window around current position
     const u32 WINDOW = 256;
-    const s16* pcm = (const s16*)sDirectVoiceData->sampleData;
+    const s16* pcm = (const s16*) sDirectVoiceData->sampleData;
     u32 totalSamples = sDirectVoiceData->numSamples * sDirectVoiceData->channels;
 
     if (sampleIndex >= totalSamples || pcm == nullptr) {
@@ -352,15 +361,16 @@ static void OnGetVoiceStatus(IEvent* ev) {
 
     u32 windowStart = (sampleIndex >= WINDOW / 2) ? sampleIndex - WINDOW / 2 : 0;
     u32 windowEnd = windowStart + WINDOW;
-    if (windowEnd > totalSamples) windowEnd = totalSamples;
+    if (windowEnd > totalSamples)
+        windowEnd = totalSamples;
 
     double sumSq = 0.0;
     u32 count = windowEnd - windowStart;
     for (u32 i = windowStart; i < windowEnd; i++) {
-        double s = (double)pcm[i];
+        double s = (double) pcm[i];
         sumSq += s * s;
     }
-    double rms = (count > 0) ? sqrt(sumSq / (double)count) : 0.0;
+    double rms = (count > 0) ? sqrt(sumSq / (double) count) : 0.0;
 
     // Threshold: ~5% of max 16-bit value
     const double THRESHOLD = 1600.0;
@@ -403,9 +413,8 @@ static void OnClearVoice(IEvent* ev) {
 static void VoiceOverride_PreNote(SequenceLayer* layer, SequenceChannel* channel) {
     gVoiceOverrideActiveNote = 0;
 
-    if ((gVoiceOverrideArmed || gVoiceOverrideSilencing)
-        && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]
-        && channel->seqScriptIO[1] == 1) {
+    if ((gVoiceOverrideArmed || gVoiceOverrideSilencing) &&
+        layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15] && channel->seqScriptIO[1] == 1) {
         if (gVoiceOverrideNotesToSkip > 0) {
             gVoiceOverrideNotesToSkip--;
             gVoiceOverrideCommSample = layer->tunedSample;
@@ -422,9 +431,8 @@ static void VoiceOverride_PreNote(SequenceLayer* layer, SequenceChannel* channel
         return;
     }
 
-    if (gVoiceOverrideSilencing
-        && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]
-        && layer->tunedSample != gVoiceOverrideCommSample) {
+    if (gVoiceOverrideSilencing && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15] &&
+        layer->tunedSample != gVoiceOverrideCommSample) {
         layer->tunedSample = gVoiceOverrideTunedSample;
     }
 }
