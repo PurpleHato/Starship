@@ -327,6 +327,41 @@ u16 AudioSeq_ScriptReadCompressedU16(SeqScriptState* state) {
     return ret;
 }
 
+static TunedSample* VoiceOverride_GetSample(TunedSample* origSample, SequenceLayer* layer, SequenceChannel* channel) {
+    extern TunedSample* gVoiceOverrideTunedSample;
+    extern TunedSample* gVoiceOverrideCommSample;
+    extern s32 gVoiceOverrideArmed;
+    extern s32 gVoiceOverrideSilencing;
+    extern s32 gVoiceOverrideActiveNote;
+    extern s32 gVoiceOverrideNotesToSkip;
+    extern s32 gVoiceOverrideStarted;
+
+    gVoiceOverrideActiveNote = 0;
+
+    if ((gVoiceOverrideArmed || gVoiceOverrideSilencing)
+        && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]
+        && channel->seqScriptIO[1] == 1) {
+        if (gVoiceOverrideNotesToSkip > 0) {
+            gVoiceOverrideNotesToSkip--;
+            gVoiceOverrideCommSample = origSample;
+            return origSample;
+        }
+        layer->portamento.mode = PORTAMENTO_MODE_OFF;
+        layer->portamento.extent = 0.0f;
+        if (gVoiceOverrideArmed) {
+            gVoiceOverrideActiveNote = 1;
+            gVoiceOverrideStarted = 1;
+        }
+        return gVoiceOverrideTunedSample;
+    }
+    if (gVoiceOverrideSilencing
+        && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]
+        && origSample != gVoiceOverrideCommSample) {
+        return gVoiceOverrideTunedSample;
+    }
+    return origSample;
+}
+
 void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
     SequencePlayer* seqPlayer;
     SequenceChannel* channel; // sp60
@@ -640,34 +675,8 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
                         }
 
                         if (instrument != NULL) {
-                            extern TunedSample* gVoiceOverrideTunedSample;
-                            extern TunedSample* gVoiceOverrideCommSample;
-                            extern s32 gVoiceOverrideArmed;
-                            extern s32 gVoiceOverrideSilencing;
-                            extern s32 gVoiceOverrideActiveNote;
-                            extern s32 gVoiceOverrideNotesToSkip;
-                            extern s32 gVoiceOverrideStarted;
-                            gVoiceOverrideActiveNote = 0;
                             TunedSample* origSample = Audio_GetInstrumentTunedSample(instrument, temp2);
-                            if ((gVoiceOverrideArmed || gVoiceOverrideSilencing) && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15] && channel->seqScriptIO[1] == 1) {
-                                if (gVoiceOverrideNotesToSkip > 0) {
-                                    gVoiceOverrideNotesToSkip--;
-                                    gVoiceOverrideCommSample = origSample;
-                                    sample = origSample;
-                                } else {
-                                    sample = gVoiceOverrideTunedSample;
-                                    layer->portamento.mode = PORTAMENTO_MODE_OFF;
-                                    layer->portamento.extent = 0.0f;
-                                    if (gVoiceOverrideArmed) {
-                                        gVoiceOverrideActiveNote = 1;
-                                        gVoiceOverrideStarted = 1;
-                                    }
-                                }
-                            } else if (gVoiceOverrideSilencing && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15] && origSample != gVoiceOverrideCommSample) {
-                                sample = gVoiceOverrideTunedSample;
-                            } else {
-                                sample = origSample;
-                            }
+                            sample = VoiceOverride_GetSample(origSample, layer, channel);
                             sp40 = (sample == layer->tunedSample);
                             layer->tunedSample = sample;
                             tuning = sample->tuning;
@@ -714,43 +723,16 @@ void AudioSeq_SeqLayerProcessScript(SequenceLayer* layer) {
                         {
                             extern s32 gVoiceOverrideActiveNote;
                             extern float gVoiceOverrideFreqMod;
-                            if (gVoiceOverrideActiveNote) {
-                                layer->freqMod = gVoiceOverrideFreqMod;
-                            }
+                            if (gVoiceOverrideActiveNote) layer->freqMod = gVoiceOverrideFreqMod;
                         }
                         if ((layer->portamento.mode & ~0x80) == 5) {
                             layer->portamentoTargetNote = cmd;
                         }
                     } else if (instrument != NULL) {
-                        extern TunedSample* gVoiceOverrideTunedSample;
-                        extern TunedSample* gVoiceOverrideCommSample;
-                        extern s32 gVoiceOverrideArmed;
-                        extern s32 gVoiceOverrideSilencing;
                         extern s32 gVoiceOverrideActiveNote;
-                        extern s32 gVoiceOverrideNotesToSkip;
-                        extern s32 gVoiceOverrideStarted;
                         extern float gVoiceOverrideFreqMod;
-                        gVoiceOverrideActiveNote = 0;
                         TunedSample* origSample = Audio_GetInstrumentTunedSample(instrument, cmd);
-                        if ((gVoiceOverrideArmed || gVoiceOverrideSilencing) && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15] && channel->seqScriptIO[1] == 1) {
-                            if (gVoiceOverrideNotesToSkip > 0) {
-                                gVoiceOverrideNotesToSkip--;
-                                gVoiceOverrideCommSample = origSample;
-                                sample = origSample;
-                            } else {
-                                sample = gVoiceOverrideTunedSample;
-                                layer->portamento.mode = PORTAMENTO_MODE_OFF;
-                                layer->portamento.extent = 0.0f;
-                                if (gVoiceOverrideArmed) {
-                                    gVoiceOverrideActiveNote = 1;
-                                    gVoiceOverrideStarted = 1;
-                                }
-                            }
-                        } else if (gVoiceOverrideSilencing && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15] && origSample != gVoiceOverrideCommSample) {
-                            sample = gVoiceOverrideTunedSample;
-                        } else {
-                            sample = origSample;
-                        }
+                        sample = VoiceOverride_GetSample(origSample, layer, channel);
                         sp40 = (sample == layer->tunedSample);
                         layer->tunedSample = sample;
                         if (gVoiceOverrideActiveNote) {
