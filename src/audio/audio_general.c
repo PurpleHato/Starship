@@ -1851,6 +1851,7 @@ void Audio_ResetSfx(void) {
 void Audio_PlayVoice(s32 msgId) {
     sCurrentVoiceId = sNextVoiceId = msgId;
     sSetNextVoiceId = true;
+    // [port - voice hook - notifies port layer of new voice playback request]
     CALL_EVENT(PlayVoiceEvent, msgId);
 }
 
@@ -1879,6 +1880,7 @@ void Audio_UpdateVoice(void) {
         sSetNextVoiceId = false;
     }
 
+    // [port - voice hook - per-frame voice override processing, port layer sets finished=true when done]
     bool finished = false;
     CALL_EVENT(UpdateVoiceEvent, &finished);
     if (finished && sMuteBgmForVoice) {
@@ -1893,6 +1895,7 @@ void Audio_UpdateVoice(void) {
 }
 
 void Audio_ClearVoice(void) {
+    // [port - voice hook - resets voice override state on clear]
     CALL_EVENT(ClearVoiceEvent);
     sCurrentVoiceId = 0;
     sNextVoiceId = 1;
@@ -1903,6 +1906,7 @@ s32 Audio_GetCurrentVoice(void) {
     // LAudioTODO: Stub for now
     // return 0;
 
+    // [port - voice hook - allows port layer to report currently playing voice msgId]
     s32 voiceResult = -1;
     CALL_EVENT(GetCurrentVoiceEvent, &voiceResult);
     if (voiceResult != -1) {
@@ -1926,6 +1930,7 @@ s32 Audio_GetCurrentVoiceStatus(void) {
     // LAudioTODO: Stub for now
     // return 1;
 
+    // [port - voice hook - allows port layer to drive mouth animation from custom audio waveform]
     s32 statusResult = -1;
     CALL_EVENT(GetVoiceStatusEvent, &statusResult);
     if (statusResult != -1) {
