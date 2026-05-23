@@ -46,6 +46,8 @@ s32 gVoiceOverrideSilencing = 0;
 s32 gVoiceOverrideActiveNote = 0;
 s32 gVoiceOverrideNotesToSkip = 0;
 s32 gVoiceOverrideStarted = 0;
+void (*gVoiceOverridePreNoteFn)(SequenceLayer* layer, SequenceChannel* channel) = nullptr;
+void (*gVoiceOverridePostNoteFn)(SequenceLayer* layer) = nullptr;
 }
 
 static Sample sDirectVoiceSample;
@@ -398,7 +400,48 @@ static void OnClearVoice(IEvent* ev) {
     sPendingVoiceMsgId = -1;
 }
 
+static void VoiceOverride_PreNote(SequenceLayer* layer, SequenceChannel* channel) {
+    gVoiceOverrideActiveNote = 0;
+
+    if ((gVoiceOverrideArmed || gVoiceOverrideSilencing)
+        && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]
+        && channel->seqScriptIO[1] == 1) {
+        if (gVoiceOverrideNotesToSkip > 0) {
+            gVoiceOverrideNotesToSkip--;
+            gVoiceOverrideCommSample = layer->tunedSample;
+            return;
+        }
+        layer->portamento.mode = 0;
+        layer->portamento.extent = 0.0f;
+        if (gVoiceOverrideArmed) {
+            gVoiceOverrideActiveNote = 1;
+            gVoiceOverrideStarted = 1;
+        }
+        layer->tunedSample = gVoiceOverrideTunedSample;
+        layer->freqMod = gVoiceOverrideFreqMod;
+        return;
+    }
+
+    if (gVoiceOverrideSilencing
+        && layer->channel == gSeqPlayers[SEQ_PLAYER_VOICE].channels[15]
+        && layer->tunedSample != gVoiceOverrideCommSample) {
+        layer->tunedSample = gVoiceOverrideTunedSample;
+    }
+}
+
+static void VoiceOverride_PostNote(SequenceLayer* layer) {
+    if (gVoiceOverrideActiveNote) {
+        layer->delay = 0x7FFF;
+        layer->gateDelay = 0;
+        layer->note->playbackState.portamento.mode = 0;
+        layer->note->playbackState.portamento.extent = 0.0f;
+    }
+}
+
 extern "C" void VoiceHooks_Register() {
+    gVoiceOverridePreNoteFn = VoiceOverride_PreNote;
+    gVoiceOverridePostNoteFn = VoiceOverride_PostNote;
+
     EventSystem::Instance->RegisterListener(PlayVoiceEventID, OnPlayVoice, EVENT_PRIORITY_HIGH);
     EventSystem::Instance->RegisterListener(UpdateVoiceEventID, OnUpdateVoice, EVENT_PRIORITY_HIGH);
     EventSystem::Instance->RegisterListener(GetCurrentVoiceEventID, OnGetCurrentVoice, EVENT_PRIORITY_HIGH);
